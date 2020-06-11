@@ -26,6 +26,7 @@ mutable struct Prob⋁{O} <: ProbInnerNode{O}
     origin::O
     children::Vector{<:ProbΔNode{<:O}}
     log_thetas::Vector{Float64}
+    log_thetas_u::Vector{Float64}
     data
     bit::Bool
     Prob⋁(n, children) = new{node_type(n)}(n, convert(Vector{ProbΔNode{node_type(n)}},children), some_vector(Float64, length(children)), nothing, false)
