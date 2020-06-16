@@ -17,8 +17,8 @@ using ProbabilisticCircuits
 
 # Learns CSDD from data based on learn_probabilistic_circuit
 data = train(dataset(twenty_datasets("nltcs"); do_shuffle=false, batch_size=-1));
-# learn_credal_circuit(data, s_idm)
-csdd = learn_credal_circuit(WXData(data), 0.1); #using clt
+# learn_credal_circuit(data, s_idm) using CSDD/CredalCircuits.jl:estimate_credal_parameters(CredalΔ, data, s_idm)
+csdd = learn_credal_circuit(WXData(data), 40.0); #using clt
 
 # println(csdd)
 
@@ -26,8 +26,8 @@ csdd = learn_credal_circuit(WXData(data), 0.1); #using clt
 for node in csdd
     if node isa Credal⋁  # typeof(node) == Credal⋁{UnstLogicalΔNode}
         println(node)
-        println(node.log_thetas)
-        println(node.log_thetas_u)
+        println("lower: ",exp.(node.log_thetas))
+        println("upper: ",exp.(node.log_thetas_u))
     end
 end
 

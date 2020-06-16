@@ -109,13 +109,13 @@ prob_origin(n::DecoratorΔNode)::CredalΔNode = origin(n, CredalΔNode)
 "Return the first origin that is a probabilistic circuit"
 prob_origin(c::DecoratorΔ)::CredalΔ = origin(c, CredalΔNode)
 
-function estimate_credal_parameters2(pc::CredalΔ, data::XData{Bool}; pseudocount::Float64)
+function estimate_credal_parameters2(pc::CredalΔ, data::XData{Bool}, s_idm::Float64; pseudocount::Float64)
     Logical.pass_up_down2(pc, data)
     w = (data isa PlainXData) ? nothing : weights(data)
-    estimate_credal_parameters_cached2(pc, w; pseudocount=pseudocount)
+    estimate_credal_parameters_cached2(pc, w, s_idm; pseudocount=pseudocount)
 end
 
-function estimate_credal_parameters_cached2(pc::CredalΔ, w; pseudocount::Float64)
+function estimate_credal_parameters_cached2(pc::CredalΔ, w, s_idm::Float64; pseudocount::Float64)
     flow(n) = Float64(sum(sum(n.data)))
     children_flows(n) = sum.(map(c -> c.data[1] .& n.data[1], children(n)))
 
@@ -126,21 +126,23 @@ function estimate_credal_parameters_cached2(pc::CredalΔ, w; pseudocount::Float6
         children_flows = children_flows_w
     end
 
-    estimate_credal_parameters_node2(n::CredalΔNode) = ()
-    function estimate_credal_parameters_node2(n::Credal⋁)
+    estimate_credal_parameters_node2(n::CredalΔNode, s_idm::Float64) = ()
+    function estimate_credal_parameters_node2(n::Credal⋁, s_idm::Float64)
         if num_children(n) == 1
-            n.log_thetas .= 0.0
+            n.log_thetas_u .= 0.0
+            n.log_thetas .= log.(1/(1+s_idm))
         else
             smoothed_flow = flow(n) + pseudocount
             uniform_pseudocount = pseudocount / num_children(n)
-            n.log_thetas .= log.((children_flows(n) .+ uniform_pseudocount) ./ smoothed_flow)
-            @assert isapprox(sum(exp.(n.log_thetas)), 1.0, atol=1e-6) "Parameters do not sum to one locally"
+            n.log_thetas .= log.((children_flows(n) .+ uniform_pseudocount)  ./ (smoothed_flow .+ s_idm))
+            n.log_thetas .= log.(((children_flows(n) .+ uniform_pseudocount) .+ s_idm) ./ (smoothed_flow .+ s_idm))
+            # @assert isapprox(sum(exp.(n.log_thetas)), 1.0, atol=1e-6) "Parameters do not sum to one locally"
             # normalize away any leftover error
-            n.log_thetas .- logsumexp(n.log_thetas)
+            # n.log_thetas .- logsumexp(n.log_thetas)
         end
     end
 
-    foreach(estimate_credal_parameters_node2, pc)
+    foreach(estimate_credal_parameters_node2, pc, s_idm)
 end
 
 function log_likelihood_per_instance2(pc::CredalΔ, data::XData{Bool})
@@ -228,41 +230,43 @@ import LogicCircuits.normalize
 end
 
 function estimate_credal_parameters(pc::CredalΔ, data::XBatches{Bool}, s_idm::Float64; pseudocount::Float64)
-    estimate_credal_parameters(AggregateFlowΔ(pc, aggr_weight_type(data)), data; pseudocount=pseudocount)
+    estimate_credal_parameters(AggregateFlowΔ(pc, aggr_weight_type(data)), data, s_idm; pseudocount=pseudocount)
 end
 
-function estimate_credal_parameters(afc::AggregateFlowΔ, data::XBatches{Bool}; pseudocount::Float64)
+function estimate_credal_parameters(afc::AggregateFlowΔ, data::XBatches{Bool}, s_idm::Float64; pseudocount::Float64)
     @assert feature_type(data) == Bool "Can only learn probabilistic circuits on Bool data"
     @assert (afc[end].origin isa CredalΔNode) "AggregateFlowΔ must originate in a CredalΔ"
     collect_aggr_flows(afc, data)
-    estimate_credal_parameters_cached(afc; pseudocount=pseudocount)
+    estimate_credal_parameters_cached(afc, s_idm; pseudocount=pseudocount)
     afc
 end
 
-function estimate_credal_parameters(fc::FlowΔ, data::XBatches{Bool}; pseudocount::Float64)
+function estimate_credal_parameters(fc::FlowΔ, data::XBatches{Bool}, s_idm::Float64; pseudocount::Float64)
     @assert feature_type(data) == Bool "Can only learn probabilistic circuits on Bool data"
     @assert (prob_origin(afc[end]) isa CredalΔNode) "FlowΔ must originate in a CredalΔ"
     collect_aggr_flows(fc, data)
-    estimate_credal_parameters_cached(origin(fc); pseudocount=pseudocount)
+    estimate_credal_parameters_cached(origin(fc), s_idm; pseudocount=pseudocount)
 end
 
  # turns aggregate statistics into theta parameters
-function estimate_credal_parameters_cached(afc::AggregateFlowΔ; pseudocount::Float64)
-    foreach(n -> estimate_credal_parameters_node(n; pseudocount=pseudocount), afc)
+function estimate_credal_parameters_cached(afc::AggregateFlowΔ, s_idm::Float64; pseudocount::Float64)
+    foreach(n -> estimate_credal_parameters_node(n, s_idm; pseudocount=pseudocount), afc)
 end
 
-estimate_credal_parameters_node(::AggregateFlowΔNode; pseudocount::Float64) = () # do nothing
-function estimate_credal_parameters_node(n::AggregateFlow⋁; pseudocount)
+estimate_credal_parameters_node(::AggregateFlowΔNode, s_idm::Float64; pseudocount::Float64) = () # do nothing
+function estimate_credal_parameters_node(n::AggregateFlow⋁, s_idm::Float64; pseudocount)
     origin = n.origin::Credal⋁
     if num_children(n) == 1
-        origin.log_thetas .= 0.0
+        origin.log_thetas_u .= 0.0
+        origin.log_thetas .= log.(1/(1+s_idm))
     else
         smoothed_aggr_flow = (n.aggr_flow + pseudocount)
         uniform_pseudocount = pseudocount / num_children(n)
-        origin.log_thetas .= log.( (n.aggr_flow_children .+ uniform_pseudocount) ./ smoothed_aggr_flow )
-        @assert isapprox(sum(exp.(origin.log_thetas)), 1.0, atol=1e-6) "Parameters do not sum to one locally: $(exp.(origin.log_thetas)), estimated from $(n.aggr_flow) and $(n.aggr_flow_children). Did you actually compute the aggregate flows?"
-        #normalize away any leftover error
-        origin.log_thetas .- logsumexp(origin.log_thetas)
+        origin.log_thetas .= log.( (n.aggr_flow_children .+ uniform_pseudocount) ./ (smoothed_aggr_flow .+ s_idm ))
+        origin.log_thetas_u .= log.( ((n.aggr_flow_children .+ uniform_pseudocount) .+ s_idm) ./ (smoothed_aggr_flow .+ s_idm ))
+        # @assert isapprox(sum(exp.(origin.log_thetas)), 1.0, atol=1e-6) "Parameters do not sum to one locally: $(exp.(origin.log_thetas)), estimated from $(n.aggr_flow) and $(n.aggr_flow_children). Did you actually compute the aggregate flows?"
+        #normalize away any leftover error ()
+        # origin.log_thetas .- logsumexp(origin.log_thetas)
     end
 end
 
