@@ -2,8 +2,8 @@ module StructureLearner
 
 using LogicCircuits
 using ..Utils
-
 using ..Probabilistic
+using ..CSDD
 using ..IO
 
 export
@@ -11,7 +11,7 @@ export
 learn_chow_liu_tree, parent_vector, print_tree, CLT,
 
 # CircuitBuilder
-compile_prob_circuit_from_clt, learn_probabilistic_circuit, BaseCache, ⊤, LitCache,
+compile_prob_circuit_from_clt, learn_probabilistic_circuit, BaseCache, ⊤, LitCache, learn_credal_circuit,
 
 # PSDDInitializer
 learn_struct_prob_circuit,
