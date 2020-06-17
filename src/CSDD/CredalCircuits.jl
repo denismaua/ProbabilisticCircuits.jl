@@ -130,12 +130,12 @@ function estimate_credal_parameters_cached2(pc::CredalΔ, w, s_idm::Float64; pse
     function estimate_credal_parameters_node2(n::Credal⋁, s_idm::Float64)
         if num_children(n) == 1
             n.log_thetas_u .= 0.0
-            n.log_thetas .= log.(1/(1+s_idm))
+            n.log_thetas .= 0.0
         else
             smoothed_flow = flow(n) + pseudocount
             uniform_pseudocount = pseudocount / num_children(n)
             n.log_thetas .= log.((children_flows(n) .+ uniform_pseudocount)  ./ (smoothed_flow .+ s_idm))
-            n.log_thetas .= log.(((children_flows(n) .+ uniform_pseudocount) .+ s_idm) ./ (smoothed_flow .+ s_idm))
+            n.log_thetas_u .= log.(((children_flows(n) .+ uniform_pseudocount) .+ s_idm) ./ (smoothed_flow .+ s_idm))
             # @assert isapprox(sum(exp.(n.log_thetas)), 1.0, atol=1e-6) "Parameters do not sum to one locally"
             # normalize away any leftover error
             # n.log_thetas .- logsumexp(n.log_thetas)
@@ -258,7 +258,7 @@ function estimate_credal_parameters_node(n::AggregateFlow⋁, s_idm::Float64; ps
     origin = n.origin::Credal⋁
     if num_children(n) == 1
         origin.log_thetas_u .= 0.0
-        origin.log_thetas .= log.(1/(1+s_idm))
+        origin.log_thetas .= 0.0
     else
         smoothed_aggr_flow = (n.aggr_flow + pseudocount)
         uniform_pseudocount = pseudocount / num_children(n)
@@ -300,11 +300,11 @@ function log_likelihood_per_instance(pc::CredalΔ, batch::PlainXData{Bool})
     (fc, log_likelihood_per_instance(fc, batch))
 end
 
-function log_proba(pc::CredalΔ, batch::PlainXData{Bool})
+function log_proba_upper(pc::CredalΔ, batch::PlainXData{Bool})
     log_likelihood_per_instance(pc, batch)[2]
 end
 
-function log_proba(pc::CredalΔ, batch::PlainXData{Int8})
+function log_proba_upper(pc::CredalΔ, batch::PlainXData{Int8})
     marginal_log_likelihood_per_instance(pc, batch)[2]
 end
 
