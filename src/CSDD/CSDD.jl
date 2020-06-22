@@ -12,8 +12,10 @@ estimate_credal_parameters, estimate_credal_parameters_cached,
 CredalΔNode, CredalΔ, CredalLeafNode, CredalInnerNode,
 CredalLiteral, Credal⋀, Credal⋁, CredalCache,
 # , variable, num_parameters, compute_log_likelihood,
-
-log_proba_upper
+log_marginal_upper,
+log_marginal_lower,
+log_prob_lower,
+log_prob_upper
 # log_proba_lower
 # ProbCircuits
 # ProbΔNode, ProbΔ, ProbΔ, ProbLeafNode, ProbInnerNode,

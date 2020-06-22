@@ -1,12 +1,13 @@
 #####################
-
+#Credal upper_marginal
+#####################
 #TODO This code seems to assume logspace flows as floating point numbers. if so, enforca that on type F
-function marginal_pass_up(circuit::UpFlowΔ{O,F}, data::XData{E}) where {E <: eltype(F)} where {O,F}
+function credal_marginal_upper_pass_up(circuit::UpFlowΔ{O,F}, data::XData{E}) where {E <: eltype(F)} where {O,F}
     resize_flows(circuit, num_examples(data))
     cache = zeros(Float64, num_examples(data)) #TODO: fix type later
-    marginal_pass_up_node(n::UpFlowΔNode, ::PlainXData) = ()
+    credal_marginal_upper_pass_up_node(n::UpFlowΔNode, ::PlainXData) = ()
 
-    function marginal_pass_up_node(n::UpFlowLiteral{O,F}, cache::Array{Float64}, data::PlainXData{E}) where {E <: eltype(F)} where {O,F}
+    function credal_marginal_upper_pass_up_node(n::UpFlowLiteral{O,F}, cache::Array{Float64}, data::PlainXData{E}) where {E <: eltype(F)} where {O,F}
         pass_up_node(n, data)
         # now override missing values by 1
         npr = pr(n)
@@ -15,7 +16,7 @@ function marginal_pass_up(circuit::UpFlowΔ{O,F}, data::XData{E}) where {E <: el
         return nothing
     end
 
-    function marginal_pass_up_node(n::UpFlow⋀Cached, cache::Array{Float64}, ::PlainXData)
+    function credal_marginal_upper_pass_up_node(n::UpFlow⋀Cached, cache::Array{Float64}, ::PlainXData)
         pr(n) .= 0
         for i=1:length(n.children)
             # pr(n) .+= pr(n.children[i])
@@ -24,13 +25,13 @@ function marginal_pass_up(circuit::UpFlowΔ{O,F}, data::XData{E}) where {E <: el
         return nothing
     end
 
-    function marginal_pass_up_node(n::UpFlow⋁Cached, cache::Array{Float64}, ::PlainXData)
+    function credal_marginal_upper_pass_up_node(n::UpFlow⋁Cached, cache::Array{Float64}, ::PlainXData)
         pr(n) .= 1e-300
         for i=1:length(n.children)    
             cache .= 0
             # broadcast reduced memory allocation, though accessing prob_origin(n).log_thetas[i] still allocates lots of extra memory, 
             # it is proabably due to derefrencing the pointer
-            broadcast!(+, cache, pr(n.children[i]), prob_origin(n).log_thetas[i])
+            broadcast!(+, cache, pr(n.children[i]), prob_origin(n).log_thetas_u[i])
             broadcast!(exp, cache, cache)
             broadcast!(+, pr(n), pr(n), cache)
         end
@@ -40,10 +41,61 @@ function marginal_pass_up(circuit::UpFlowΔ{O,F}, data::XData{E}) where {E <: el
 
     ## Pass Up on every node in order
     for n in circuit
-        marginal_pass_up_node(n, cache, data)
+        credal_marginal_upper_pass_up_node(n, cache, data)
     end
     return nothing
 end
+
+##########################################################################
+##Credal lower marginalization
+##########################################################################
+function credal_marginal_lower_pass_up(circuit::UpFlowΔ{O,F}, data::XData{E}) where {E <: eltype(F)} where {O,F}
+    resize_flows(circuit, num_examples(data))
+    cache = zeros(Float64, num_examples(data)) #TODO: fix type later
+    credal_marginal_lower_pass_up_node(n::UpFlowΔNode, ::PlainXData) = ()
+
+    function credal_marginal_lower_pass_up_node(n::UpFlowLiteral{O,F}, cache::Array{Float64}, data::PlainXData{E}) where {E <: eltype(F)} where {O,F}
+        pass_up_node(n, data)
+        # now override missing values by 1
+        npr = pr(n)
+        npr[feature_matrix(data)[:,variable(n)] .< zero(eltype(F))] .= 1
+        npr .= log.( npr .+ 1e-300 )
+        return nothing
+    end
+
+    function credal_marginal_lower_pass_up_node(n::UpFlow⋀Cached, cache::Array{Float64}, ::PlainXData)
+        pr(n) .= 0
+        for i=1:length(n.children)
+            # pr(n) .+= pr(n.children[i])
+            broadcast!(+, pr(n), pr(n), pr(n.children[i]))
+        end
+        return nothing
+    end
+
+    function credal_marginal_lower_pass_up_node(n::UpFlow⋁Cached, cache::Array{Float64}, ::PlainXData)
+        pr(n) .= 1e-300
+        for i=1:length(n.children)    
+            cache .= 0
+            # broadcast reduced memory allocation, though accessing prob_origin(n).log_thetas[i] still allocates lots of extra memory, 
+            # it is proabably due to derefrencing the pointer
+            broadcast!(+, cache, pr(n.children[i]), prob_origin(n).log_thetas_u[i])
+            broadcast!(exp, cache, cache)
+            broadcast!(+, pr(n), pr(n), cache)
+        end
+        broadcast!(log, pr(n), pr(n));
+        return nothing
+    end
+
+    ## Pass Up on every node in order
+    for n in circuit
+        credal_marginal_lower_pass_up_node(n, cache, data)
+    end
+    return nothing
+end
+
+
+
+
 
 
 
