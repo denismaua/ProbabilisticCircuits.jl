@@ -302,6 +302,13 @@ end
 function log_proba(pc::ProbΔ, batch::PlainXData{Int8})
     marginal_log_likelihood_per_instance(pc, batch)[2]
 end
+"""
+Calculate class dominance considering missing values
+"""
+
+function dominance_missing(pc::ProbΔ, batch::PlainXData{Int8}, y::Integer)
+    dominance_per_instance(pc, batch, y)[2]
+end
 
 """
 Calculate log likelihood per instance for batches of samples.
@@ -346,6 +353,20 @@ function marginal_log_likelihood_per_instance(pc::ProbΔ, batch::PlainXData{Int8
     (fc, marginal_log_likelihood_per_instance(fc, batch))
 end
 
+
+"""
+Calculate class dominance for a batch of samples with missing values.
+
+To indicate a variable is not observed, pass -1 for that variable.
+"""
+function dominance_per_instance(pc::ProbΔ, batch::PlainXData{Int8}, y::Integer)
+    opts = (compact⋀=false, compact⋁=false)
+    fc = UpFlowΔ(pc, 4, Tuple{Float64,Float64,Float64},opts);
+    # opts = (flow_opts★..., el_type=Float64, compact⋀=false, compact⋁=false)
+    # fc = UpFlowΔ(pc, num_examples(batch), Float64, opts)
+    (fc, dominance_per_instance(fc, batch, y))
+end
+
 """
 Calculate log likelihood for a batch of samples with partial evidence P(e).
 (If you already have a FlowΔ)
@@ -355,6 +376,17 @@ To indicate a variable is not observed, pass -1 for that variable.
 function marginal_log_likelihood_per_instance(fc::UpFlowΔ, batch::PlainXData{Int8})
     @assert (prob_origin(fc[end]) isa ProbΔNode) "FlowΔ must originate in a ProbΔ"
     marginal_pass_up(fc, batch)
+    pr(fc[end])
+end
+"""
+Calculate class dominance for a batch of samples with missing values.
+
+To indicate a variable is not observed, pass -1 for that variable.
+"""
+function dominance_per_instance(fc::UpFlowΔ, batch::PlainXData{Int8}, y::Integer)
+    @assert (prob_origin(fc[end]) isa ProbΔNode) "FlowΔ must originate in a ProbΔ"
+    dominance_pass_up(fc, batch,y)
+    # print(pr(fc[end]))
     pr(fc[end])
 end
 

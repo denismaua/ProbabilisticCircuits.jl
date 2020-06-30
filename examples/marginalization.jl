@@ -67,3 +67,13 @@ upper_prob = exp.(log_prob_upper(csdd, complete_obs))
 println("Lower prob: $(lower_prob)")
 println("Upper prob: $(upper_prob)")
 
+# Testing conditional inference upper and lower bounds
+## 1,0 observed/evidence variables values; 2,3 query varables values for 0,1;  -1 marginalize variables.
+## cond_queries:    X_1=0,X_2=0|X_3=0,X_4=0
+##             X_15=1,X_16=1|X_1=1,X_2=1             
+cond_queries= XData(Int8.([2 2 0 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1; 1 1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 3 3 ]))
+lower_cond = conditional_lower(csdd, cond_queries)
+upper_cond = conditional_upper(csdd, cond_queries)
+println("Lower cond. prob: $(lower_cond)")
+println("Upper cond. prob: $(upper_cond)")
+

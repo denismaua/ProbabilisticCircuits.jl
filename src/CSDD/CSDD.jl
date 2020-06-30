@@ -15,7 +15,9 @@ CredalLiteral, Credal⋀, Credal⋁, CredalCache,
 log_marginal_upper,
 log_marginal_lower,
 log_prob_lower,
-log_prob_upper
+log_prob_upper,
+conditional_lower,
+conditional_upper
 # log_proba_lower
 # ProbCircuits
 # ProbΔNode, ProbΔ, ProbΔ, ProbLeafNode, ProbInnerNode,

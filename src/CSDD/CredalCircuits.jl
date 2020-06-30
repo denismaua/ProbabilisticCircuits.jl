@@ -425,6 +425,66 @@ function marginal_log_likelihood_lower_per_instance(fc::UpFlowΔ, batch::PlainXD
     pr(fc[end])
 end
 
+
+"""
+Calculate conditional inference upper bound 
+"""
+
+function conditional_upper(pc::CredalΔ, batch::PlainXData{Int8})
+    conditional_upper_per_instance(pc, batch)[2]
+end
+
+
+"""
+Calculate conditional inference lower bound 
+"""
+
+function conditional_lower(pc::CredalΔ, batch::PlainXData{Int8})
+    conditional_lower_per_instance(pc, batch)[2]
+end
+
+
+"""
+Calculate conditional inference upper bound per instance 
+"""
+function conditional_upper_per_instance(pc::CredalΔ, batch::PlainXData{Int8})
+    opts = (compact⋀=false, compact⋁=false)
+    #Initialize the flows as a tuple instead of a single value
+    fc = UpFlowΔ(pc, num_examples(batch), Tuple{Float64,Float64,Float64},opts);
+    (fc, conditional_upper_instance(fc, batch))
+end
+
+"""
+Calculate conditional inference upper bound per instance 
+"""
+function conditional_lower_per_instance(pc::CredalΔ, batch::PlainXData{Int8})
+    opts = (compact⋀=false, compact⋁=false)
+    #Initialize the flows as a tuple instead of a single value 
+    fc = UpFlowΔ(pc, num_examples(batch), Tuple{Float64,Float64,Float64},opts);
+    (fc, conditional_lower_instance(fc, batch))
+end
+
+"""
+Calculate conditional inference upper bound per instance 
+
+"""
+function conditional_upper_instance(fc::UpFlowΔ, batch::PlainXData{Int8})
+    # @assert (prob_origin(fc[end]) isa ProbΔNode) "FlowΔ must originate in a ProbΔ"
+    conditional_upper_pass_up(fc, batch)
+    pr(fc[end])
+end
+
+
+"""
+Calculate conditional inference lowe bound per instance 
+
+"""
+function conditional_lower_instance(fc::UpFlowΔ, batch::PlainXData{Int8})
+    # @assert (prob_origin(fc[end]) isa ProbΔNode) "FlowΔ must originate in a ProbΔ"
+    conditional_lower_pass_up(fc, batch)
+    pr(fc[end])
+end
+"""
 # function check_parameter_integrity(circuit::CredalΔ)
 #     for node in filter(n -> GateType(n) isa Credal⋁, circuit)
 #         @assert all(θ -> !isnan(θ), node.log_thetas) "There is a NaN in one of the log_thetas"
