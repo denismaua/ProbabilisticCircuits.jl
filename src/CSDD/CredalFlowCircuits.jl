@@ -25,18 +25,84 @@ function credal_marginal_upper_pass_up(circuit::UpFlowΔ{O,F}, data::XData{E}) w
         return nothing
     end
 
+
     function credal_marginal_upper_pass_up_node(n::UpFlow⋁Cached, cache::Array{Float64}, ::PlainXData)
-        pr(n) .= 1e-300
-        for i=1:length(n.children)    
-            cache .= 0
-            # broadcast reduced memory allocation, though accessing prob_origin(n).log_thetas[i] still allocates lots of extra memory, 
-            # it is proabably due to derefrencing the pointer
-            broadcast!(+, cache, pr(n.children[i]), prob_origin(n).log_thetas_u[i])
-            broadcast!(exp, cache, cache)
-            broadcast!(+, pr(n), pr(n), cache)
+        n.pr .= 1e-300
+        #pr(n) .= 1e-300
+
+        # for i=1:length(n.children) 
+        #     cache .= 0
+        #     #broadcast reduced memory allocation, though accessing prob_origin(n).log_thetas[i] still allocates lots of extra memory, 
+        #     #it is proabably due to derefrencing the pointer
+        #     broadcast!(+, cache, pr(n.children[i]), prob_origin(n).log_thetas_u[i])
+        #     broadcast!(exp, cache, cache)
+        #     broadcast!(+, pr(n), pr(n), cache)
+        # end
+
+        # broadcast!(log, pr(n), pr(n));
+        #u = exp(prob_origin(n).log_thetas_u)
+        #u = prob_origin(n).log_thetas_u
+        u = Array{Float64}(undef, length(n.children), num_examples(data))
+        c = Array{Float64}(undef, length(n.children), num_examples(data))
+        
+        # for i=1:length(n.children) 
+        #     for j=1:num_examples(data)
+        #         u[i,j] =  exp(prob_origin(n).log_thetas_u[i])
+        #     end
+        # end
+
+        ### sotto versione broadcastata
+
+        for j=1:num_examples(data)
+            u[:,j] .=  exp.(prob_origin(n).log_thetas_u)
         end
-        broadcast!(log, pr(n), pr(n));
+
+        
+        #println(u)
+        # for i=1:length(n.children) 
+        #     for j=1:num_examples(data)
+             
+        #      c[i,j] = exp(n.children[i].pr[j]) ## TODO log is monotone + broadcast
+        #     end
+        # end
+
+        ### sotto versione broadcastata
+
+        for j=1:num_examples(data) 
+            c[:,j] .= exp.(pr.(n.children)[j]) ## TODO log is monotone + broadcast
+        end
+
+
+        # for i=1:length(n.children)
+        #     println(n.children[i].pr)
+        # end
+        # println(c)
+        
+        optx = Array{Float64}(undef, length(n.children), num_examples(data))
+        optx = copy(u)
+
+        for j=1:num_examples(data)
+            
+            for i=1:length(n.children)
+                if c[i,j] == sort(c[:,j])[1]
+                    optx[i,j] = 0.0
+                    somma = sum(optx[:,j])
+                    optx[i,j] = 1.0-somma ## TODO compatta questo pezzo con find o findall 
+                    break
+                end
+            end
+        end
+
+        # println(c)
+        # println(u)
+        # println(optx[:,1])
+        # println(sum(optx[:,1]))
+        
+        for j=1:num_examples(data)
+            pr(n)[j] = log(optx[:,j]'c[:,j])
+        end
         return nothing
+    
     end
 
     ## Pass Up on every node in order
@@ -74,17 +140,72 @@ function credal_marginal_lower_pass_up(circuit::UpFlowΔ{O,F}, data::XData{E}) w
 
     function credal_marginal_lower_pass_up_node(n::UpFlow⋁Cached, cache::Array{Float64}, ::PlainXData)
         pr(n) .= 1e-300
-        for i=1:length(n.children)    
-            cache .= 0
-            # broadcast reduced memory allocation, though accessing prob_origin(n).log_thetas[i] still allocates lots of extra memory, 
-            # it is proabably due to derefrencing the pointer
-            broadcast!(+, cache, pr(n.children[i]), prob_origin(n).log_thetas_u[i])
-            broadcast!(exp, cache, cache)
-            broadcast!(+, pr(n), pr(n), cache)
+        l = Array{Float64}(undef, length(n.children), num_examples(data))
+        c = Array{Float64}(undef, length(n.children), num_examples(data))
+        
+        # for i=1:length(n.children) 
+        #     for j=1:num_examples(data)
+        #         l[i,j] =  exp(prob_origin(n).log_thetas[i])
+        #     end
+        # end
+
+        for j=1:num_examples(data)
+            l[:,j] .=  exp.(prob_origin(n).log_thetas)
         end
-        broadcast!(log, pr(n), pr(n));
+
+
+        
+        # for i=1:length(n.children) 
+        #     for j=1:num_examples(data)
+             
+        #      c[i,j] = exp(n.children[i].pr[j])
+        #     end
+        # end
+
+        for j=1:num_examples(data) 
+            c[:,j] .= exp.(pr.(n.children)[j]) ## TODO log is monotone + broadcast
+        end
+        
+        
+        optx = Array{Float64}(undef, length(n.children), num_examples(data))
+        optx = copy(l)
+
+
+        for j=1:num_examples(data)
+            
+            for i=1:length(n.children)
+                if c[i,j] == sort(c[:,j])[1]
+                    optx[i,j] = 0.0
+                    somma = sum(optx[:,j])
+                    optx[i,j] = 1.0-somma ## TODO compatta questo pezzo con find o findall 
+                    break
+                end
+            end
+        end
+        
+        
+        #println(sum(optx[:,1])) this is not exactly 1... approx stuff? or is there something wrong in the code?
+       
+        for j=1:num_examples(data)
+            pr(n)[j] = log(optx[:,j]'c[:,j])
+        end
         return nothing
+    
     end
+
+    # function credal_marginal_lower_pass_up_node(n::UpFlow⋁Cached, cache::Array{Float64}, ::PlainXData)
+    #     pr(n) .= 1e-300
+    #     for i=1:length(n.children)    
+    #         cache .= 0
+    #         # broadcast reduced memory allocation, though accessing prob_origin(n).log_thetas[i] still allocates lots of extra memory, 
+    #         # it is proabably due to derefrencing the pointer
+    #         broadcast!(+, cache, pr(n.children[i]), prob_origin(n).log_thetas_u[i])
+    #         broadcast!(exp, cache, cache)
+    #         broadcast!(+, pr(n), pr(n), cache)
+    #     end
+    #     broadcast!(log, pr(n), pr(n));
+    #     return nothing
+    # end
 
     ## Pass Up on every node in order
     for n in circuit
@@ -92,9 +213,6 @@ function credal_marginal_lower_pass_up(circuit::UpFlowΔ{O,F}, data::XData{E}) w
     end
     return nothing
 end
-
-
-
 
 
 
@@ -155,9 +273,6 @@ function marginal_pass_up_down(circuit::DownFlowΔ{O,F}, data::XData{E}) where {
     # marginal_pass_up(origin(circuit), data)
     marginal_pass_down(circuit)
 end
-
-
-
 
 """
 Conditional inference Upper bound
