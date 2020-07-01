@@ -4,9 +4,11 @@ using LogicCircuits
 # We need to "activate" our local version first
 import Pkg
 # This assumes you are running the file from inside the Project's folder
+Pkg.develop("LogicCircuits")
+# Pkg.activate("/home/giu/Documents/Juice/ProbabilisticCircuits.jl")
 Pkg.activate(".")
 # If this is not the case, you need to give the full path address, e.g.
-#Pkg.activate("/Users/denis/ProbabilisticCircuits.jl/")
+# Pkg.activate("/Users/denis/ProbabilisticCircuits.jl/")
 # Alternatively, we can import our packages from github (but then local changes are not included)
 #Pkg.add("https://github.com/denismaua/ProbabilisticCircuits.jl")
 using ProbabilisticCircuits
