@@ -439,8 +439,8 @@ end
 Calculate conditional inference lower bound 
 """
 
-function conditional_lower(pc::CredalΔ, batch::PlainXData{Int8})
-    conditional_lower_per_instance(pc, batch)[2]
+function conditional_lower(pc::CredalΔ, batch::PlainXData{Int8}, mu::Array{Float64,1})
+    conditional_lower_per_instance(pc, batch, mu)[2]
 end
 
 
@@ -450,18 +450,18 @@ Calculate conditional inference upper bound per instance
 function conditional_upper_per_instance(pc::CredalΔ, batch::PlainXData{Int8})
     opts = (compact⋀=false, compact⋁=false)
     #Initialize the flows as a tuple instead of a single value
-    fc = UpFlowΔ(pc, num_examples(batch), Tuple{Float64,Float64,Float64},opts);
+    fc = UpFlowΔ(pc, num_examples(batch), Tuple{Float64,Float64,Float64,Float64},opts);
     (fc, conditional_upper_instance(fc, batch))
 end
 
 """
 Calculate conditional inference upper bound per instance 
 """
-function conditional_lower_per_instance(pc::CredalΔ, batch::PlainXData{Int8})
+function conditional_lower_per_instance(pc::CredalΔ, batch::PlainXData{Int8}, mu::Array{Float64,1})
     opts = (compact⋀=false, compact⋁=false)
     #Initialize the flows as a tuple instead of a single value 
-    fc = UpFlowΔ(pc, num_examples(batch), Tuple{Float64,Float64,Float64},opts);
-    (fc, conditional_lower_instance(fc, batch))
+    fc = UpFlowΔ(pc, num_examples(batch), Tuple{Float64,Float64,Float64,Float64},opts);
+    (fc, conditional_lower_instance(fc, batch, mu))
 end
 
 """
@@ -479,9 +479,9 @@ end
 Calculate conditional inference lowe bound per instance 
 
 """
-function conditional_lower_instance(fc::UpFlowΔ, batch::PlainXData{Int8})
+function conditional_lower_instance(fc::UpFlowΔ, batch::PlainXData{Int8}, mu::Array{Float64,1})
     # @assert (prob_origin(fc[end]) isa ProbΔNode) "FlowΔ must originate in a ProbΔ"
-    conditional_lower_pass_up(fc, batch)
+    conditional_lower_pass_up(fc, batch, mu)
     pr(fc[end])
 end
 """

@@ -46,6 +46,14 @@ csdd = learn_credal_circuit(WXData(data), 40.0); #using clt
 # for node in csdd
 #     if node isa Credal⋁  # typeof(node) == Credal⋁{UnstLogicalΔNode}
 #         println(node)
+#         for j=1:length(node.children)
+#             println(typeof(node.children[j]))
+#             println(length(node.children[j].children))
+#             println(length(node.children[j].children[1]))
+#         end
+#     end
+# end
+
 #         println("lower: ",exp.(node.log_thetas))
 #         println("upper: ",exp.(node.log_thetas_u))
 #     end
@@ -71,9 +79,9 @@ println("Upper prob: $(upper_prob)")
 ## 1,0 observed/evidence variables values; 2,3 query varables values for 0,1;  -1 marginalize variables.
 ## cond_queries:    X_1=0,X_2=0|X_3=0,X_4=0
 ##             X_15=1,X_16=1|X_1=1,X_2=1             
-cond_queries= XData(Int8.([2 2 0 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1; 1 1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 3 3 ]))
-lower_cond = conditional_lower(csdd, cond_queries)
-upper_cond = conditional_upper(csdd, cond_queries)
+cond_queries= XData(Int8.([2 2 0 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1; 1 1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 3 3; 1 1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 3 3 ]))
+lower_cond = conditional_lower(csdd, cond_queries, [1.0, 1.0, 1.0])
+#upper_cond = conditional_upper(csdd, cond_queries)
 println("Lower cond. prob: $(lower_cond)")
-println("Upper cond. prob: $(upper_cond)")
+#println("Upper cond. prob: $(upper_cond)")
 
